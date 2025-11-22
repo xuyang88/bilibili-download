@@ -166,10 +166,16 @@ async function main() {
         const indices = options.indices.split(',').map(i => parseInt(i.trim())).filter(i => !isNaN(i));
         videosToDownload = pages.filter(p => indices.includes(p.page));
       } else {
-        const choices = pages.map(p => ({
-          name: `[P${p.page}] ${p.part}`,
-          value: p
-        }));
+        const choices = pages.map(p => {
+          const sanitizedTitle = p.part.replace(/[\\/:*?"<>|]/g, '_');
+          const finalOutputPath = path.join(outputDir, `${sanitizedTitle}.mp4`);
+          const exists = fs.existsSync(finalOutputPath);
+          return {
+            name: `[P${p.page}] ${p.part} ${exists ? '(Downloaded)' : ''}`,
+            value: p,
+            disabled: exists ? 'Already downloaded' : false // Optional: disable if exists, or just mark
+          };
+        });
 
         const { selectedVideos } = await inquirer.prompt([
           {
@@ -177,7 +183,8 @@ async function main() {
             name: 'selectedVideos',
             message: 'Select videos to download:',
             choices: choices,
-            pageSize: 20
+            pageSize: 20,
+            loop: false
           }
         ]);
         videosToDownload = selectedVideos;
